@@ -9,6 +9,10 @@ import os
 # 在函数中用globle表示使用的是全局变量，函数中不能使用同名的变量
 video_list = []
 folder_path = r"D:\大三下\python视频整理"
+if not True:
+    pass
+    # E:\ALL of Games\The Last of Us Part I v1.1.0\学习补丁+修改器+完美全解锁存档+赠品\学习补丁
+    # 5_6091234726423563578.mp4
 
 video_player = "wmplayer.exe"
 video_player = "PotPlayerMini64.exe"
@@ -20,7 +24,7 @@ def on_listbox_double_click(event):
     if index:
         # 获取选中的项目内容
         selected_item = listbox.get(index)
-        selected_item_box = listbox_box.get(index)
+        selected_item_box = listbox_box.get(index) # box里的全部是有目录的
         entry_box.delete(0, tk.END)  # 清空 entry_box 中的内容
         entry_box.insert(0, selected_item_box)  # 插入选中的项目内容
         # 将选中的项目显示在 Entry 中
@@ -84,7 +88,7 @@ def button_close_video1():
 # 改名按钮
 def button_update_Name1():
     # 检测是否选择了视频文件
-    oldname = entry.get()
+    oldname = entry_box.get()
     if oldname != "":
         newname = entry_update_Name.get()
         if newname != "" and newname != "输入名称":
@@ -105,6 +109,7 @@ def button_update_list1():
     global video_list
     global folder_path
     listbox.delete(0, tk.END)
+    listbox_box.delete(0, tk.END)
     folder_from_entry = entry_folder.get()
     if folder_from_entry != "请输入视频目录地址..." and folder_from_entry != "":
         # E:\ALL of Games\The Last of Us Part I v1.1.0\学习补丁+修改器+完美全解锁存档+赠品\学习补丁
@@ -141,6 +146,7 @@ def search_videos():
         entry_tip_updata("请先刷新列表！")
     global video_list
     keywords = entry_search.get().strip().split()  # 获取搜索关键词，去除首尾空格并按空格分割
+    keywords_len = len(keywords)
     if not keywords or entry_search.get() == "搜索框(关键词按空格分割)":
         entry_tip_updata("请先输入文字！")
         return
@@ -156,14 +162,16 @@ def search_videos():
         entry_tip_updata("没有查询到对应的视频！")
         return
     else:
-        count_non_zero = sum(1 for element in values_list if element != 0)
+        # count_non_zero = sum(1 for element in values_list if element != 0) #没有全部满足的也存在
+        count_non_zero = sum(1 for element in values_list if element == keywords_len)
         entry_tip_updata(f"查询完成! 共有 {count_non_zero} 个视频")
     # 根据得分对视频列表进行排序
     video_list.sort(key=lambda x: -video_score.get(x, 0))
-    ## 使用 filter 函数筛选出 sore 字典中值不等于 0 的元素
-    after_search_video_list = list(filter(lambda x : video_score.get(x,0) != 0, video_list))
+    ## 使用 filter 函数筛选出 sore 字典中值不等于 0 的元素 ，filter中的video_list是要用于筛选的列表，filter返回一个迭代器
+    after_search_video_list = list(filter(lambda x : video_score.get(x,0) == keywords_len, video_list))
     # 更新列表框中的内容
     listbox.delete(0, tk.END)
+    listbox_box.delete(0, tk.END)
     for video_path in after_search_video_list:
         listbox.insert(tk.END, os.path.basename(video_path))
         listbox_box.insert(tk.END, video_path)
@@ -218,7 +226,6 @@ def set_default_text(entry, default_text):
     <Leave>：鼠标离开控件区域时触发该事件。
     """
 
-
 # 生成按钮点击事件处理函数
 def generate_keywords():
     global folder_path
@@ -231,7 +238,6 @@ def generate_keywords():
     # current_directory = os.getcwd()
     folder_from_entry = entry_folder.get()
     if folder_from_entry != "请输入视频目录地址..." and folder_from_entry != "":
-        # E:\ALL of Games\The Last of Us Part I v1.1.0\学习补丁+修改器+完美全解锁存档+赠品\学习补丁
         folder_path = folder_from_entry
     else:
         Label_tip.config(text="使用默认目录！")
@@ -370,7 +376,7 @@ if __name__ == "__main__":
     entry_folder.pack()
 
     # 输入框
-    entry = tk.Entry(root, justify = "center")
+    entry = tk.Entry(root, width=60, justify = "center")
     set_default_text(entry, "当前选中的视频")
     entry.pack()
 

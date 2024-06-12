@@ -4,7 +4,7 @@ def get_files_list(directory):
     fileList = []
     for root, dirs, files in os.walk(directory):
         for file in files:
-            if file.endswith(('.mp4','.avi','.mkv','.MP4')):
+            if file.endswith(('.AVI','.mp4','.avi','.mkv','.MP4', '.MOV', '.mov', '.webm', '.m4v')):
                 file = os.path.join(root, file)
                 fileList.append(file)
             # print(os.path.join(root, file))  //包含了目录的
