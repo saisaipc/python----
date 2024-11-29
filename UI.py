@@ -139,10 +139,9 @@ def button_update_list1():
     listbox_box.delete(0, tk.END)
     folder_from_entry = entry_folder.get()
     if folder_from_entry != "请输入视频目录地址..." and folder_from_entry != "":
-        # E:\ALL of Games\The Last of Us Part I v1.1.0\学习补丁+修改器+完美全解锁存档+赠品\学习补丁
         video_list = []
         folder_path = folder_from_entry
-        videofiles_list = getFileList.get_files_list(folder_from_entry)
+        videofiles_list = getFileList.get_files_list(folder_path)
         for item in videofiles_list:
             video_list.append(item['path'])
         entry_tip_updata(f"正使用输入的目录，共查询到 {len(video_list)} 个视频")
@@ -384,7 +383,7 @@ def on_key_listbox_double_click(event):
     # 获取双击选中的项目索引
     index = key_listbox.curselection()
     if index:
-        # 获取选中的项目内容
+        # 获取选中的项目内
         selected_item = key_listbox.get(index)
         # entry_update_Name.delete(0, tk.END)  # 清空 entry_update_Name 中的内容
         if entry_update_Name.get() == "输入名称":
@@ -498,7 +497,49 @@ def move_video(folder_name):
     entry.delete(0, tk.END)
     entry.insert(0, "当前选中的视频")
 
+# 在主函数之前添加文件夹过滤函数
+def folder_filter():
+    selected_folder = folder_combobox.get()
+    if not selected_folder:
+        entry_tip_updata("请先选择文件夹！")
+        return
+        
+    if not videofiles_list:
+        entry_tip_updata("请先刷新列表！")
+        return
 
+    # 获取当前目录
+    folder_from_entry = entry_folder.get()
+    if folder_from_entry != "请输入视频目录地址..." and folder_from_entry != "":
+        current_folder = folder_from_entry
+    else:
+        current_folder = folder_path
+    
+    # 过滤出目标文件夹中的视频
+    filtered_paths = []
+    for file in videofiles_list:
+        # 获取视频文件所在的文件夹路径
+        video_folder = os.path.dirname(file['path'])
+        # 如果文件夹名称匹配，则添加到过滤列表中
+        if os.path.basename(video_folder) == selected_folder:
+            filtered_paths.append(file['path'])
+
+    # 更新显示列表
+    listbox.delete(0, tk.END)
+    listbox_box.delete(0, tk.END)
+    
+    if not filtered_paths:
+        entry_tip_updata(f"在 {selected_folder} 文件夹中没有找到视频！")
+        return
+        
+    # 按文件名排序
+    filtered_paths.sort(key=lambda x: os.path.basename(x).lower())
+    
+    for item in filtered_paths:
+        listbox.insert(tk.END, filter_unicode(os.path.basename(item)))
+        listbox_box.insert(tk.END, filter_unicode(item))
+    
+    entry_tip_updata(f"在 {selected_folder} 文件夹中找到 {len(filtered_paths)} 个视频")
 
 """
 grid布局
@@ -677,8 +718,20 @@ if __name__ == "__main__":
     button_buxing = tk.Button(button_frame, text="不行", command=button_buxing1)
     button_buxing.pack(side="left", padx=1)
 
-
-
+    # 在 filter_frame 中添加新的控件
+    # 创建标签
+    folder_label = tk.Label(filter_frame, text="选择文件夹:")
+    folder_label.pack(side="left", pady=10, padx=5)
+    
+    # 创建文件夹下拉框
+    folder_options = ["精品", "还行", "一般", "不行"]
+    folder_combobox = ttk.Combobox(filter_frame, values=folder_options, width=10)
+    folder_combobox.pack(side="left", pady=10)
+    folder_combobox.set("精品")  # 设置默认值
+    
+    # 创建文件夹过滤按钮
+    folder_filter_button = tk.Button(filter_frame, text="文件夹过滤", command=folder_filter)
+    folder_filter_button.pack(side="left", pady=5, padx=5)
 
     # 启动事件循环
     root.mainloop()
