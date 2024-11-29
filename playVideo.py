@@ -4,17 +4,46 @@ import time
 import getFileList
 import os
 import psutil
+import threading
+import queue
+import psutil
+
+# 单开一个线程运行视频软件，或许可以通过线程pid关掉视频
+def run_potplayer(potplayer_path, filepath, pid_queue):
+    process = subprocess.Popen([potplayer_path, filepath], shell=True)
+    pid_queue.put(process.pid)  # 将 pid 放入队列中
 
 def play_video(filepath):
     # 使用默认的视频播放器打开视频文件
-    os.system('start "" "%s"' % filepath)
+    # os.system('start "" "%s"' % filepath)
 
-    # 下面的是gpt写的，没试过
-    # video_path = r"D:\大三下\校内实习\视频+  +\16.mp4"
-    # try:
-    #     os.startfile(video_path)
-    # except FileNotFoundError:
-    #     print("文件不存在")
+    # 改用 subprocess 模块来更稳定地执行命令
+    # PotPlayer 路径
+    potplayer_path = r"D:\PotPlayer\PotPlayerMini64.exe"
+    # 视频文件路径(测试)
+    # filepath = r"E:\ALL of Games\The Last of Us Part I v1.1.0\学习补丁+修改器+完美全解锁存档+赠品\学习补丁\24.10.13\1_5125377872399172765.mp4"
+    
+    # 使用 subprocess 调用 PotPlayer 打开视频文件
+    print("视频文件目录为" + f"{filepath}")
+    # 创建队列以接收线程返回的 pid
+    pid_queue = queue.Queue()
+    # 创建并启动线程
+    thread = threading.Thread(target=run_potplayer,args=(potplayer_path, filepath,pid_queue))
+    thread.start()
+    # 获取 pid
+    thread.join()  # 等待线程完成
+    pid = pid_queue.get()  # 从队列中获取 pid
+    print("PotPlayer PID:", pid)
+
+
+
+    #  # 等待一会后，结束 PotPlayer 进程
+    # input("按 Enter 键关闭 PotPlayer...")
+    # p = psutil.Process(pid)
+    # p.terminate()  # 尝试正常终止
+    # p.wait()       # 等待进程终止
+    # os.system(f"taskkill /PID {pid} /F") 
+
 
     # 下面的语句无法播放路径中有特殊字符的
     # subprocess.Popen(["start", filepath], shell=True)
@@ -46,16 +75,24 @@ def play_video(filepath):
     #     print("Unsupported operating system")
 
 
-def close_video_player(videoplayer_name , pid):
+def close_video_player(videoplayer_name , pid = None):
     video_player_pid = None  # 初始化为 None，以防止在未找到匹配进程时引用错误
 
-    # 第一次调用本函数获取原来的pid
-    if pid == None :
-        for process in psutil.process_iter(['pid', 'name']):
-            if process.info['name'] == videoplayer_name:
-                video_player_pid = process.info['pid']
-                return video_player_pid
-        return (f"第一次未找到名称为 {videoplayer_name} 的视频播放器进程pid")
+    # # 第一次调用本函数获取原来的pid
+    # if pid == None :
+    #     for process in psutil.process_iter(['pid', 'name']):
+    #         if process.info['name'] == videoplayer_name:
+    #             video_player_pid = process.info['pid']
+    #             return video_player_pid
+    #     return (f"第一次未找到名称为 {videoplayer_name} 的视频播放器进程pid")
+
+    if pid is None:
+        video_player_pid = next(
+            (process.info['pid'] for process in psutil.process_iter(['pid', 'name']) if process.info['name'] == videoplayer_name),
+            None
+        )
+        return video_player_pid if video_player_pid else f"第一次未找到名称为 {videoplayer_name} 的视频播放器进程pid"
+    
     
     try:
         process = psutil.Process(pid)
@@ -113,28 +150,27 @@ def is_file_closed(file_path):
 
 
 if __name__ == "__main__":
-    filepath = r"D:\大三下\python视频整理\3.mp4"  # 替换成你的视频文件路径
-    # play_video(filepath)
+    # TODO 使用subprocess 模块可行，但是使用window不行，个人认为是输入的路径问题，可以排查一下
 
+    
+
+
+    # 播放器的名称    
     player_name = "PotPlayer"
-    # player_name = "wmplayer.exe"
-    # close_video_player(player_name)
+    potplayer_path = r"D:\PotPlayer\PotPlayerMini64.exe"
+    # 视频文件路径
+    filepath = r"E:\ALL of Games\The Last of Us Part I v1.1.0\学习补丁+修改器+完美全解锁存档+赠品\学习补丁\24.10.13\1_5125377872399172765.mp4"
+    # 用指定的播放器打开视频文件
+    os.system('"%s" "%s"' % (potplayer_path, filepath))
+    
     old_pid = None
     old_pid = close_video_player(player_name , old_pid)
     print(old_pid)
     time.sleep(5)
-        # 返回的是提示时为str，返回的是pid时为int
+    # 返回的是提示时 为str，返回的是pid时 为int
     if len(str(old_pid)) > 10 :
         print("没找到")
     else:
         print(close_video_player(player_name , old_pid))
 
-    # # 要重命名的文件的路径（包括文件名）
-    # old_path = filepath
-
-    # # 文件的新名称
-    # new_name = r"2"
-
-    # # 执行文件重命名
-    # tip = rename_file(old_path, new_name)
     # print(tip)

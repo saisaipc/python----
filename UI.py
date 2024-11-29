@@ -1,35 +1,55 @@
+# python路径：C:/Users/Windows/AppData/Local/Microsoft/WindowsApps/python3.11.exe
 # 本项目使用的是 PotPlayer 播放器
 import tkinter as tk
 import getFileList 
 import playVideo
+import time
 import os
+from tkinter import ttk
+from tkinter import messagebox
+
 # TODO 关键词查询时的数量可以变一变
 
 # 全局变量，用于存储当前视频列表
 # 在函数中用globle表示使用的是全局变量，函数中不能使用同名的变量
+# 视频目录列表
 video_list = []
-folder_path = r"D:\大三下\python视频整理"
-if not True:
-    pass
-    # E:\ALL of Games\The Last of Us Part I v1.1.0\学习补丁+修改器+完美全解锁存档+赠品\学习补丁
-    # 5_6091234726423563578.mp4
+
+# 用于存储视频文件的路径，时长信息
+videofiles_list = []
+
+# 全局变量，用于存储点击次数
+click_count = 0
+
+# folder_path = r"D:\python小程序\python视频整理"
+folder_path = r"E:\ALL of Games\The Last of Us Part I v1.1.0\学习补丁+修改器+完美全解锁存档+赠品\学习补丁"
 
 video_player = "wmplayer.exe"
 video_player = "PotPlayerMini64.exe"
 
 # 双击列表项事件处理函数
 def on_listbox_double_click(event):
-    # 获取双击选中的项目索引
-    index = listbox.curselection()
-    if index:
-        # 获取选中的项目内容
-        selected_item = listbox.get(index)
-        selected_item_box = listbox_box.get(index) # box里的全部是有目录的
-        entry_box.delete(0, tk.END)  # 清空 entry_box 中的内容
-        entry_box.insert(0, selected_item_box)  # 插入选中的项目内容
-        # 将选中的项目显示在 Entry 中
-        entry.delete(0, tk.END)  # 清空 Entry 中的内容
-        entry.insert(0, selected_item)  # 插入选中的项目内容
+    global click_count
+    click_count += 1
+    if click_count == 3:
+        # 获取双击选中的项目索引
+        index = listbox.curselection()
+        if index:
+            video_path = listbox_box.get(index[0])
+            playVideo.play_video(video_path)
+        click_count = 0
+    elif click_count == 2:
+        # 原来的双击功能
+        index = listbox.curselection()
+        if index:
+            # 获取选中的项目内容
+            selected_item = listbox.get(index)
+            selected_item_box = listbox_box.get(index) # box里的全部是有目录的
+            entry_box.delete(0, tk.END)  # 清空 entry_box 中的内容
+            entry_box.insert(0, selected_item_box)  # 插入选中的项目内容
+            # 将选中的项目显示在 Entry 中
+            entry.delete(0, tk.END)  # 清空 Entry 中的内容
+            entry.insert(0, selected_item)
 
 # 播放下一个视频
 def button_play_next1():
@@ -67,22 +87,24 @@ def button_play_video1():
     if user_input == '' or user_input == "当前选中的视频":
         entry_tip_updata("请先双击列表中的视频！")
         return
-    if user_input != '' and folder_from_entry != "请输入视频目录地址..." and folder_from_entry != "":
-        video_path = entry_box.get()
-        playVideo.play_video(video_path)
-    else:
-        playVideo.play_video(user_input)
+    video_path = entry_box.get()
+    playVideo.play_video(video_path)
 
 # 关闭视频
 def button_close_video1():
     global video_player
-    pid = None
-    old_pid = playVideo.close_video_player(video_player , pid)
+    start_time = time.time()
+    old_pid = playVideo.close_video_player(video_player)
+    end_time = time.time()
+    # print(f"第一次调用运行时间: {end_time - start_time:.6f} 秒")
     # 返回的是提示时为str，返回的是pid时为int
     if len(str(old_pid)) > 10 :
         entry_tip_updata(f"没有查询到{video_player}")
         return
+    start_time = time.time()
     msg2 = playVideo.close_video_player(video_player , old_pid)
+    end_time = time.time()
+    # print(f"第二次调用运行时间: {end_time - start_time:.6f} 秒")
     entry_tip_updata(msg2)
 
 # 改名按钮
@@ -92,7 +114,7 @@ def button_update_Name1():
     if oldname != "":
         newname = entry_update_Name.get()
         if newname != "" and newname != "输入名称":
-            tip = playVideo.rename_file(oldname, newname)
+            tip = playVideo.rename_file(oldname, newname, encoding='utf-8')  # 指定编码为 UTF-8
             entry_tip_updata(tip)
         else:
             entry_tip_updata("请输入名称！")
@@ -104,26 +126,37 @@ def button_update_Name1():
 def entry_tip_updata(msg):
     Label_tip.config(text = msg)
 
+# 过滤高于 U+FFFF 的 Unicode 字符
+def filter_unicode(text):
+    return ''.join(c if ord(c) <= 0xFFFF else '?' for c in text)
+
 # 更新 Listbox 中添加项目
 def button_update_list1():
     global video_list
     global folder_path
+    global videofiles_list
     listbox.delete(0, tk.END)
     listbox_box.delete(0, tk.END)
     folder_from_entry = entry_folder.get()
     if folder_from_entry != "请输入视频目录地址..." and folder_from_entry != "":
         # E:\ALL of Games\The Last of Us Part I v1.1.0\学习补丁+修改器+完美全解锁存档+赠品\学习补丁
+        video_list = []
         folder_path = folder_from_entry
-        video_list = getFileList.get_files_list(folder_from_entry)
-        entry_tip_updata(f"共查询到 {len(video_list)} 个视频")
+        videofiles_list = getFileList.get_files_list(folder_from_entry)
+        for item in videofiles_list:
+            video_list.append(item['path'])
+        entry_tip_updata(f"正使用输入的目录，共查询到 {len(video_list)} 个视频")
     else:
-        video_list = getFileList.get_files_list(folder_path)
-        entry_tip_updata(f"正使用默认目录，查询到 {len(video_list)} 个视频")
+        video_list = []
+        videofiles_list = getFileList.get_files_list(folder_path)
+        for item in videofiles_list:
+            video_list.append(item['path'])
+        entry_tip_updata(f"正使用默认的目录，查询到 {len(video_list)} 个视频")
     # 默认按照文件名进行排序
     video_list.sort()
     for item in video_list:
-        listbox.insert(tk.END, os.path.basename(item))
-        listbox_box.insert(tk.END, item)
+        listbox.insert(tk.END, filter_unicode(os.path.basename(item)))
+        listbox_box.insert(tk.END, filter_unicode(item))
 
 # 输入地址框的绑定函数
 def on_entry_click(event):
@@ -139,36 +172,51 @@ def on_focus_out(event):
 
 # 搜索视频,按空格分割
 def search_videos():
-    # print("这是搜索按钮")
-    # test = listbox.get(0)
-    # print(test)
     if listbox.get(0) == "":
         entry_tip_updata("请先刷新列表！")
-    global video_list
+        return
+        
     keywords = entry_search.get().strip().split()  # 获取搜索关键词，去除首尾空格并按空格分割
     keywords_len = len(keywords)
     if not keywords or entry_search.get() == "搜索框(关键词按空格分割)":
         entry_tip_updata("请先输入文字！")
         return
+
+    # 重新获取当前目录下的视频列表
+    folder_from_entry = entry_folder.get()
+    if folder_from_entry != "请输入视频目录地址..." and folder_from_entry != "":
+        current_folder = folder_from_entry
+    else:
+        current_folder = folder_path
+        
+    # 重新扫描目录获取最新的视频列表
+    global videofiles_list
+    videofiles_list = getFileList.get_files_list(current_folder)
+    global video_list
+    video_list = [item['path'] for item in videofiles_list]
+
     # 计算每个视频文件名中包含的关键词数量
     video_score = {}
     for video_path in video_list:
-        video_name = os.path.basename(video_path)
-        # 对每一个视频进行关键词查找
-        score = sum(keyword.lower() in video_name.lower() for keyword in keywords)
-        video_score[video_path] = score
+        # 检查文件是否存在
+        if os.path.exists(video_path):
+            video_name = os.path.basename(video_path)
+            # 对每一个视频进行关键词查找
+            score = sum(keyword.lower() in video_name.lower() for keyword in keywords)
+            video_score[video_path] = score
+
     values_list = list(video_score.values())
-    if max(values_list) == 0:
+    if not values_list:
         entry_tip_updata("没有查询到对应的视频！")
         return
     else:
-        # count_non_zero = sum(1 for element in values_list if element != 0) #没有全部满足的也存在
         count_non_zero = sum(1 for element in values_list if element == keywords_len)
         entry_tip_updata(f"查询完成! 共有 {count_non_zero} 个视频")
+
     # 根据得分对视频列表进行排序
     video_list.sort(key=lambda x: -video_score.get(x, 0))
-    ## 使用 filter 函数筛选出 sore 字典中值不等于 0 的元素 ，filter中的video_list是要用于筛选的列表，filter返回一个迭代器
-    after_search_video_list = list(filter(lambda x : video_score.get(x,0) == keywords_len, video_list))
+    after_search_video_list = list(filter(lambda x: video_score.get(x, 0) == keywords_len, video_list))
+
     # 更新列表框中的内容
     listbox.delete(0, tk.END)
     listbox_box.delete(0, tk.END)
@@ -348,6 +396,110 @@ def on_key_listbox_double_click(event):
         entry_update_Name.insert(0, selected_item)  # 将选中的项目内容插入 entry_update_Name 框
         return
 
+# 过滤按钮
+def timeFilter():
+    videofiles_list
+    # 筛选 time 在 10 到 100 之间的 path，跳过 None 类型的 time
+    filtered_paths = [file['path'] for file in videofiles_list if file['time'] is not None and startTime <= file['time'] <= endTime]
+    # print(f"过滤后的视频{filtered_paths}")
+    video_list = filtered_paths
+    # 默认按照文件名进行排序
+    video_list.sort()
+    listbox.delete(0, tk.END)
+    listbox_box.delete(0, tk.END)
+    for item in video_list:
+        listbox.insert(tk.END, filter_unicode(os.path.basename(item)))
+        listbox_box.insert(tk.END, filter_unicode(item))
+    entry_tip_updata(f"过滤到 {len(video_list)} 个视频")
+
+
+
+
+# 在 `UI.py` 文件中添加新的按钮和函数
+def button_jingpin1():
+    move_video("精品")
+
+def button_yiban1():
+    move_video("一般")
+
+def button_buxing1():
+    move_video("不行")
+
+def button_haixing1():
+    move_video("还行")
+
+def move_video(folder_name):
+    # 获取当前视频文件的目录
+    video_path = entry_box.get()
+    if video_path == "":
+        entry_tip_updata("请先选择视频文件！")
+        return
+
+    # 获取当前选中的索引
+    index = listbox.curselection()
+    if not index:  # 如果没有选中项
+        entry_tip_updata("请先选择视频文件！")
+        return
+
+    # 获取选中的项目内容
+    video_path = listbox_box.get(index[0])  # box里的全部是有目录的
+
+    # 检查文件是否存在
+    if not os.path.exists(video_path):
+        entry_tip_updata("视频文件不存在！请刷新列表或重新搜索")
+        # 从列表中移除不存在的文件
+        listbox.delete(index)
+        listbox_box.delete(index)
+        # 清空 entry_box 和 entry
+        entry_box.delete(0, tk.END)
+        entry.delete(0, tk.END)
+        entry.insert(0, "当前选中的视频")
+        return
+
+    # 获取当前视频文件的文件名
+    video_name = os.path.basename(video_path)
+    
+    # 获取视频文件的上一级目录
+    parent_directory = os.path.dirname(os.path.dirname(video_path))
+    
+    # 检查目标文件夹是否存在，如果不存在则创建
+    target_folder = os.path.join(parent_directory, folder_name)
+    if not os.path.exists(target_folder):
+        os.mkdir(target_folder)
+    
+    # 检查视频文件是否已经存在于目标文件夹中
+    new_video_path = os.path.join(target_folder, video_name)
+    if os.path.exists(new_video_path):
+        # 弹出提示框，询问用户是否要移动视频文件
+        result = messagebox.askyesno("提示", f"视频已存在于 {folder_name} 文件夹中，是否要覆盖？")
+        if result:
+            # 移动视频文件到目标文件夹
+            os.replace(video_path, new_video_path)
+            entry_tip_updata("移动成功：" + new_video_path)
+        else:
+            entry_tip_updata("视频未移动")
+            return
+    else:
+        # 移动视频文件到目标文件夹
+        os.rename(video_path, new_video_path)
+        entry_tip_updata("移动成功：" + new_video_path)
+
+    # 移动文件后更新全局视频列表
+    global video_list, videofiles_list
+    video_list = [path for path in video_list if path != video_path]
+    videofiles_list = [item for item in videofiles_list if item['path'] != video_path]
+
+    # 从显示列表中移除已移动的文件
+    listbox.delete(index)
+    listbox_box.delete(index)
+    
+    # 清空 entry_box 和 entry
+    entry_box.delete(0, tk.END)
+    entry.delete(0, tk.END)
+    entry.insert(0, "当前选中的视频")
+
+
+
 """
 grid布局
 row=row_number：指定小部件放置在第几行。
@@ -360,13 +512,15 @@ if __name__ == "__main__":
     root = tk.Tk()
     root.title("简单界面")
     # 设置窗口初始大小为 500x700 像素
-    root.geometry("500x720")
+    root.geometry("1150x820")
 
     # 提示框
-    Label_tip = tk.Label(root, width=60, justify="center")
+    Label_tip = tk.Label(root, width=120, justify="center")
     Label_tip.config(text = '提示消息: 请先输入视频目录！')
     # entry_tip.config(state = "readonly")
     Label_tip.pack()
+
+
 
     # 输入地址框
     entry_folder = tk.Entry(root, width=30, fg='grey')
@@ -374,57 +528,115 @@ if __name__ == "__main__":
     entry_folder.bind('<FocusIn>', on_entry_click)
     entry_folder.bind('<FocusOut>', on_focus_out)
     entry_folder.pack()
-
     # 输入框
     entry = tk.Entry(root, width=60, justify = "center")
     set_default_text(entry, "当前选中的视频")
     entry.pack()
 
+
+
+    # 创建一个Frame容器来放置按钮
+    button_frame = tk.Frame(root)
+    button_frame.pack()
     # 播放按钮
-    button_play_video = tk.Button(root, text="播放", command=button_play_video1)
-    button_play_video.pack()
-
+    button_play_video = tk.Button(button_frame, text="播放", command=button_play_video1)
+    button_play_video.pack(side="left", padx=1)
     # 播放下一个按钮
-    button_play_next = tk.Button(root, text="播放下一个", command=button_play_next1)
-    button_play_next.pack()
-
+    button_play_next = tk.Button(button_frame, text="播放下一个", command=button_play_next1)
+    button_play_next.pack(side="left", padx=1)
     # 关闭按钮 
-    button_close_video = tk.Button(root, text="关闭", command=button_close_video1)
-    button_close_video.pack() 
+    button_close_video = tk.Button(button_frame, text="关闭", command=button_close_video1)
+    button_close_video.pack(side="left", padx=1)
 
+
+
+  # 创建一个Frame容器来放置改名框与按钮
+    changeName_frame = tk.Frame(root)
+    changeName_frame.pack()
     # 改名框
-    #  textvariable="输入名称",
-    entry_update_Name = tk.Entry(root, justify="center")
+    entry_update_Name = tk.Entry(changeName_frame,width=50, justify="center")
     set_default_text(entry_update_Name, "输入名称")
-    entry_update_Name.pack()
-
+    entry_update_Name.pack(side="left")
     # 改名按钮
-    button_update_Name = tk.Button(root, text="改名", command=button_update_Name1)
-    button_update_Name.pack() 
+    button_update_Name = tk.Button(changeName_frame, text="改名", command=button_update_Name1)
+    button_update_Name.pack(side="left", padx=1) 
 
     # 用于存储双击的视频的完整路径，用于子文件的情况
     entry_box = tk.Entry()
     # 用于存储列表里的完整的路径名
     listbox_box = tk.Listbox()
 
+
+  # 创建一个Frame容器来放置搜索框
+    search_frame = tk.Frame(root)
+    search_frame.pack()
     # 搜索框
-    entry_search = tk.Entry(root, width=30, justify="center")
+    entry_search = tk.Entry(search_frame, width=30, justify="center")
     set_default_text(entry_search, "搜索框(关键词按空格分割)")
-    entry_search.pack()
-
+    entry_search.pack(side="left")
     # 搜索按钮
-    button_search = tk.Button(root, text="搜索", command=search_videos)
-    button_search.pack()
+    button_search = tk.Button(search_frame, text="搜索", command=search_videos)
+    button_search.pack(side="left", padx=1)
 
+
+
+   # 创建一个Frame容器来放置过滤框
+    filter_frame = tk.Frame(root)
+    filter_frame.pack()
+    # 创建标签
+    label = tk.Label(filter_frame, text="请选择一个选项:")
+    label.pack(side="left", pady=10)
+    # 定义下拉框选项
+    options = ["10s以下", "10s~30s", "30s~1分钟", "1分钟~5分钟", "5分钟~10分钟", "10分钟~30分钟", "30分钟~1小时", "1小时以上", "不限"]
+    # 创建Combobox
+    combobox = ttk.Combobox(filter_frame, values=options)
+    combobox.pack(side="left",pady=10)
+    # 设置默认值
+    combobox.set("不限")
+    # 处理选择事件
+    def on_select(event):
+        # print("你选择了:", combobox.get())
+        selectText = combobox.get()
+        global startTime
+        global endTime
+        if selectText == "10s以下":
+            startTime = 0
+            endTime = 10
+        elif selectText == "10s~30s":
+            startTime = 10
+            endTime = 30
+        elif selectText == "30s~1分钟":
+            startTime = 30
+            endTime = 60
+        elif selectText == "1分钟~5分钟":
+            startTime = 60
+            endTime = 300
+        elif selectText == "5分钟~10分钟":
+            startTime = 300
+            endTime = 600
+        elif selectText == "10分钟~30分钟":
+            startTime = 600
+            endTime = 1800
+        elif selectText == "30分钟~1小时":
+            startTime = 1800
+            endTime = 3600
+        elif selectText == "1小时以上":
+            startTime = 3600
+            endTime = 99999999999
+        elif selectText == "不限":
+            startTime = 0
+            endTime = 99999999999
+    # 过滤按钮
+    timeFilter_button = tk.Button(filter_frame, text="过滤测试", command=timeFilter)
+    timeFilter_button.pack(side="left", pady=5)
+    combobox.bind("<<ComboboxSelected>>", on_select)
+
+    # 更新列表按钮
+    button_update_list = tk.Button(filter_frame, text="刷新视频列表", command=lambda: button_update_list1())
+    button_update_list.pack(side="left")
     # 创建 Listbox 组件（展示视频 的列表）
     listbox = tk.Listbox(root, width=150)
     listbox.pack()
-    
-
-    # 更新列表按钮
-    button_update_list = tk.Button(root, text="刷新视频列表", command=lambda: button_update_list1())
-    button_update_list.pack()
-
     # 绑定双击列表项事件
     """
     <Double-Button-1>：表示鼠标左键双击事件。
@@ -433,18 +645,41 @@ if __name__ == "__main__":
     """
     listbox.bind("<Double-Button-1>", on_listbox_double_click)
 
+
     
     # 创建 关键词 Listbox 组件
-    key_listbox = tk.Listbox(root, width=50)
+    key_listbox = tk.Listbox(root, width=20)
     key_listbox.bind('<Double-Button-1>', on_key_listbox_double_click)
     key_listbox.pack()
+
+
+
 
     # 输入框
     entry_keywords = tk.Entry(root, justify="center")
     entry_keywords.pack(pady=5)
-        # 生成按钮
+    # 生成按钮
     button_generate = tk.Button(root, text="关键字(文件)生成", command=generate_keywords)
     button_generate.pack(pady=5)
 
+
+
+    # 在 `UI.py` 文件中添加新的按钮
+    button_jingpin = tk.Button(button_frame, text="精品", command=button_jingpin1)
+    button_jingpin.pack(side="left", padx=1)
+
+    button_haixing = tk.Button(button_frame, text="还行", command=button_haixing1)
+    button_haixing.pack(side="left", padx=1)
+
+    button_yiban = tk.Button(button_frame, text="一般", command=button_yiban1)
+    button_yiban.pack(side="left", padx=1)
+
+    button_buxing = tk.Button(button_frame, text="不行", command=button_buxing1)
+    button_buxing.pack(side="left", padx=1)
+
+
+
+
     # 启动事件循环
     root.mainloop()
+
