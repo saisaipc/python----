@@ -66,7 +66,7 @@ def button_play_next1():
         selected_item = listbox.get(index)
         selected_item_box = listbox_box.get(index)
         entry_box.delete(0, tk.END)  # 清空 Entry 中的内容?
-        entry_box.insert(0, selected_item_box)  # 插入选中的项��内容
+        entry_box.insert(0, selected_item_box)  # 插入选中的项内容
         # 将选中的项目显示在 Entry 中
         entry.delete(0, tk.END)  # 清空 Entry 中的内容
         entry.insert(0, os.path.basename(selected_item))  # 插入选中的项目内容
@@ -330,7 +330,7 @@ def generate_keywords():
     last_keyword = keyword_list[-1]
     if len(keyword_list) > 1 and last_keyword.startswith('t') and last_keyword.endswith('t'):  # 判断最后一个关键词是否用引号包围
         # keyword_list.extend(keyword_list)  # 将关键词添加到列表中
-        # 如果 Entry 更新框中已经有文字，则在其后面加上空格再加入关键词
+        # 如果 Entry 更新框中已经有文字，则在其后面加上空���再加入关键词
         # if entry_update_Name.get():
         #     entry_update_Name.insert(tk.END, " ")
         # entry_update_Name.insert(tk.END, ' '.join(keywords))  # 将关键词显示在 Entry 更新框中
@@ -539,7 +539,7 @@ def folder_filter():
     # 过滤出目标文件夹中的视频
     filtered_paths = []
     for file in videofiles_list:
-        # 获取视频文件所在的文件夹路径
+        # 获取视频文件所在的文���夹路径
         video_folder = os.path.dirname(file['path'])
         # 如果文件夹名称匹配，则添加到过滤列表中
         if os.path.basename(video_folder) == selected_folder:
@@ -550,7 +550,7 @@ def folder_filter():
     listbox_box.delete(0, tk.END)
     
     if not filtered_paths:
-        entry_tip_updata(f"在 {selected_folder} 文件夹中没有找到��频！")
+        entry_tip_updata(f"在 {selected_folder} 文件夹中没有找到频！")
         return
         
     # 按文件名排序
@@ -691,9 +691,9 @@ if __name__ == "__main__":
     # 创建标签
     label = tk.Label(filter_frame, text="请选择一个选项:")
     label.pack(side="left", pady=10)
-    # 定义下拉框选项
+    # 定义下拉框选项 - 移除文件夹选项，只保留时长选项
     options = ["10s以下", "10s~30s", "30s~1分钟", "1分钟~5分钟", "5分钟~10分钟", 
-              "10分钟~30分钟", "30分钟~1小时", "1小时以上", "精品", "还行", "一般", "不行", "不限"]
+              "10分钟~30分钟", "30分钟~1小时", "1小时以上", "不限"]
     
     # 创建Combobox
     combobox = ttk.Combobox(filter_frame, values=options)
