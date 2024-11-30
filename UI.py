@@ -7,6 +7,11 @@ import time
 import os
 from tkinter import ttk
 from tkinter import messagebox
+import json
+
+# 在文件开头添加配置变量
+POTPLAYER_PATH = r"D:\PotPlayer\PotPlayerMini64.exe"  # 可以根据实际安装路径修改
+DEFAULT_VIDEO_FOLDER = r"E:\ALL of Games\The Last of Us Part I v1.1.0\学习补丁+修改器+完美全解锁存档+赠品\学习补丁"
 
 # TODO 关键词查询时的数量可以变一变
 
@@ -22,10 +27,10 @@ videofiles_list = []
 click_count = 0
 
 # folder_path = r"D:\python小程序\python视频整理"
-folder_path = r"E:\ALL of Games\The Last of Us Part I v1.1.0\学习补丁+修改器+完美全解锁存档+赠品\学习补丁"
+folder_path = DEFAULT_VIDEO_FOLDER
 
 video_player = "wmplayer.exe"
-video_player = "PotPlayerMini64.exe"
+video_player = POTPLAYER_PATH
 
 # 双击列表项事件处理函数
 def on_listbox_double_click(event):
@@ -61,7 +66,7 @@ def button_play_next1():
         selected_item = listbox.get(index)
         selected_item_box = listbox_box.get(index)
         entry_box.delete(0, tk.END)  # 清空 Entry 中的内容?
-        entry_box.insert(0, selected_item_box)  # 插入选中的项目内容
+        entry_box.insert(0, selected_item_box)  # 插入选中的项��内容
         # 将选中的项目显示在 Entry 中
         entry.delete(0, tk.END)  # 清空 Entry 中的内容
         entry.insert(0, os.path.basename(selected_item))  # 插入选中的项目内容
@@ -82,13 +87,10 @@ def button_play_next1():
         
 # 播放视频 //可以在这里就获取pid
 def button_play_video1():
-    user_input = entry.get()
-    folder_from_entry = entry_folder.get()
-    if user_input == '' or user_input == "当前选中的视频":
-        entry_tip_updata("请先双击列表中的视频！")
-        return
-    video_path = entry_box.get()
-    playVideo.play_video(video_path)
+    safe_execute(
+        lambda: playVideo.play_video(entry_box.get()),
+        "播放视频失败"
+    )
 
 # 关闭视频
 def button_close_video1():
@@ -130,6 +132,20 @@ def entry_tip_updata(msg):
 def filter_unicode(text):
     return ''.join(c if ord(c) <= 0xFFFF else '?' for c in text)
 
+def format_duration(duration):
+    """格式化时长显示"""
+    if duration is None:
+        return ""
+    
+    if duration < 60:  # 小于1分钟
+        return f" [{int(duration)}秒]"
+    elif duration < 3600:  # 1分钟到1小时
+        minutes = duration / 60
+        return f" [{minutes:.1f}分钟]"
+    else:  # 1小时以上
+        hours = duration / 3600
+        return f" [{hours:.1f}小时]"
+
 # 更新 Listbox 中添加项目
 def button_update_list1():
     global video_list
@@ -154,7 +170,9 @@ def button_update_list1():
     # 默认按照文件名进行排序
     video_list.sort()
     for item in video_list:
-        listbox.insert(tk.END, filter_unicode(os.path.basename(item)))
+        duration = next((file['time'] for file in videofiles_list if file['path'] == item), None)
+        duration_str = format_duration(duration)
+        listbox.insert(tk.END, filter_unicode(os.path.basename(item) + duration_str))
         listbox_box.insert(tk.END, filter_unicode(item))
 
 # 输入地址框的绑定函数
@@ -188,13 +206,13 @@ def search_videos():
     else:
         current_folder = folder_path
         
-    # 重新扫描目录获取最新的视频列表
+    # 重新扫描目录获取最新的视列表
     global videofiles_list
     videofiles_list = getFileList.get_files_list(current_folder)
     global video_list
     video_list = [item['path'] for item in videofiles_list]
 
-    # 计算每个视频文件名中包含的关键词数量
+    # 计算每个视频文件名中包含的关键词数
     video_score = {}
     for video_path in video_list:
         # 检查文件是否存在
@@ -334,7 +352,7 @@ def generate_keywords():
             file.write('\n'.join(keyword_list))
             file.write('\n')
         Label_tip.config(text="关键词列表已生成，并保存到文件：" + filename)
-        # 将关键词放到关键词列表中
+        # 将关键词放到关键词表中
         key_listbox.delete(0, tk.END)
         for item in keyword_list:
             key_listbox.insert(tk.END, item)
@@ -378,7 +396,7 @@ def generate_keywords():
         key_listbox.insert(tk.END, item)
     return
     
-# 双击关键词列表项事件处理函数
+# 双击键词列表项事件处理函数
 def on_key_listbox_double_click(event):
     # 获取双击选中的项目索引
     index = key_listbox.curselection()
@@ -397,19 +415,22 @@ def on_key_listbox_double_click(event):
 
 # 过滤按钮
 def timeFilter():
-    videofiles_list
-    # 筛选 time 在 10 到 100 之间的 path，跳过 None 类型的 time
-    filtered_paths = [file['path'] for file in videofiles_list if file['time'] is not None and startTime <= file['time'] <= endTime]
-    # print(f"过滤后的视频{filtered_paths}")
-    video_list = filtered_paths
-    # 默认按照文件名进行排序
-    video_list.sort()
+    filtered_files = [file for file in videofiles_list 
+                     if file['time'] is not None and startTime <= file['time'] <= endTime]
+    
+    # 更新显示列表
     listbox.delete(0, tk.END)
     listbox_box.delete(0, tk.END)
-    for item in video_list:
-        listbox.insert(tk.END, filter_unicode(os.path.basename(item)))
-        listbox_box.insert(tk.END, filter_unicode(item))
-    entry_tip_updata(f"过滤到 {len(video_list)} 个视频")
+    
+    # 按文件名排序
+    filtered_files.sort(key=lambda x: os.path.basename(x['path']).lower())
+    
+    for file in filtered_files:
+        duration_str = format_duration(file['time'])
+        listbox.insert(tk.END, filter_unicode(os.path.basename(file['path']) + duration_str))
+        listbox_box.insert(tk.END, filter_unicode(file['path']))
+    
+    entry_tip_updata(f"过滤到 {len(filtered_files)} 个视频")
 
 
 
@@ -455,7 +476,7 @@ def move_video(folder_name):
         entry.insert(0, "当前选中的视频")
         return
 
-    # 获取当前视频文件的文件名
+    # 获取当前视频件的文件名
     video_name = os.path.basename(video_path)
     
     # 获取视频文件的上一级目录
@@ -529,7 +550,7 @@ def folder_filter():
     listbox_box.delete(0, tk.END)
     
     if not filtered_paths:
-        entry_tip_updata(f"在 {selected_folder} 文件夹中没有找到视频！")
+        entry_tip_updata(f"在 {selected_folder} 文件夹中没有找到��频！")
         return
         
     # 按文件名排序
@@ -546,13 +567,56 @@ grid布局
 row=row_number：指定小部件放置在第几行。
 column=column_number：指定小部件放置在第几列。
 rowspan=row_span：指定小部件占据多少行，默认为 1。
-columnspan=column_span：指定小部件占据多少列，默认为 1。
+columnspan=column_span：指定小部件占多少列，默认为 1。
 """
+def setup_shortcuts():
+    root.bind('<Control-p>', lambda e: button_play_video1())  # Ctrl+P 播放
+    root.bind('<Control-n>', lambda e: button_play_next1())   # Ctrl+N 下一个
+    root.bind('<Control-q>', lambda e: button_close_video1()) # Ctrl+Q 闭
+    root.bind('<Control-r>', lambda e: button_update_list1()) # Ctrl+R 刷新列表
+
+def create_context_menu():
+    context_menu = tk.Menu(root, tearoff=0)
+    context_menu.add_command(label="播放", command=button_play_video1)
+    context_menu.add_command(label="下一个", command=button_play_next1)
+    context_menu.add_separator()
+    context_menu.add_command(label="移动到精品", command=button_jingpin1)
+    context_menu.add_command(label="移动到还行", command=button_haixing1)
+    context_menu.add_command(label="移动到一般", command=button_yiban1)
+    context_menu.add_command(label="移动到不行", command=button_buxing1)
+    return context_menu
+
+def show_context_menu(event):
+    context_menu.tk_popup(event.x_root, event.y_root)
+
+def safe_execute(func, error_message="操作失败"):
+    try:
+        return func()
+    except Exception as e:
+        entry_tip_updata(f"{error_message}: {str(e)}")
+        return None
+
+def save_config():
+    config = {
+        'last_folder': entry_folder.get(),
+        'window_size': f"{root.winfo_width()}x{root.winfo_height()}",
+        'potplayer_path': POTPLAYER_PATH
+    }
+    with open('config.json', 'w') as f:
+        json.dump(config, f)
+
+def load_config():
+    try:
+        with open('config.json', 'r') as f:
+            return json.load(f)
+    except:
+        return {}
+
 if __name__ == "__main__":
     # 创建主窗口
     root = tk.Tk()
     root.title("简单界面")
-    # 设置窗口初始大小为 500x700 像素
+    # 设置窗口初大小为 500x700 像素
     root.geometry("1150x820")
 
     # 提示框
@@ -628,12 +692,13 @@ if __name__ == "__main__":
     label = tk.Label(filter_frame, text="请选择一个选项:")
     label.pack(side="left", pady=10)
     # 定义下拉框选项
-    options = ["10s以下", "10s~30s", "30s~1分钟", "1分钟~5分钟", "5分钟~10分钟", "10分钟~30分钟", "30分钟~1小时", "1小时以上", "不限"]
+    options = ["10s以下", "10s~30s", "30s~1分钟", "1分钟~5分钟", "5分钟~10分钟", 
+              "10分钟~30分钟", "30分钟~1小时", "1小时以上", "精品", "还行", "一般", "不行", "不限"]
+    
     # 创建Combobox
     combobox = ttk.Combobox(filter_frame, values=options)
-    combobox.pack(side="left",pady=10)
-    # 设置默认值
-    combobox.set("不限")
+    combobox.pack(side="left", pady=10)
+    combobox.set("不限")  # 设置默认值
     # 处理选择事件
     def on_select(event):
         # print("你选择了:", combobox.get())
@@ -732,6 +797,19 @@ if __name__ == "__main__":
     # 创建文件夹过滤按钮
     folder_filter_button = tk.Button(filter_frame, text="文件夹过滤", command=folder_filter)
     folder_filter_button.pack(side="left", pady=5, padx=5)
+
+    setup_shortcuts()
+
+    context_menu = create_context_menu()
+    listbox.bind("<Button-3>", show_context_menu)  # 绑定右键点击事件
+
+    # setup_drag_drop()  # 暂时注释掉这行，等安装了 tkinterdnd2 包后再启用
+
+    config = load_config()
+    if config.get('last_folder'):
+        entry_folder.delete(0, tk.END)
+        entry_folder.insert(0, config['last_folder'])
+    root.protocol("WM_DELETE_WINDOW", lambda: (save_config(), root.destroy()))
 
     # 启动事件循环
     root.mainloop()
